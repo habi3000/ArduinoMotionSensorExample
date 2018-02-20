@@ -10,7 +10,7 @@ void setup() {
     ret = mympu_open(200);
     Serial.print("MPU init: "); Serial.println(ret);
     Serial.print("Free mem: "); Serial.println(freeRam());
-	
+
 }
 
 unsigned int c = 0; //cumulative number of successful MPU/DMP reads
@@ -25,8 +25,8 @@ void loop() {
 	case 0: c++; break;
 	case 1: np++; return;
 	case 2: err_o++; return;
-	case 3: err_c++; return; 
-	default: 
+	case 3: err_c++; return;
+	default:
 		Serial.print("READ ERROR!  ");
 		Serial.println(ret);
 		return;
@@ -40,6 +40,8 @@ void loop() {
 	    Serial.print("\tgy: "); Serial.print(mympu.gyro[0]);
 	    Serial.print(" gp: "); Serial.print(mympu.gyro[1]);
 	    Serial.print(" gr: "); Serial.println(mympu.gyro[2]);
+      Serial.print("\taX: "); Serial.print(mympu.accel[0]/2048);  // 2048 is spcified in the datasheet for a 2g full scale range
+      Serial.print("g aY: "); Serial.print(mympu.accel[1]/2048);  // the scale range can be changed in file mpu.cpp line 46
+      Serial.print("g aZ: "); Serial.print(mympu.accel[2]/2048); Serial.println('g');
     }
 }
-

@@ -4,7 +4,7 @@
 
 #define FSR 2000
 //#define GYRO_SENS       ( 131.0f * 250.f / (float)FSR )
-#define GYRO_SENS       16.375f 
+#define GYRO_SENS       16.375f
 #define QUAT_SENS       1073741824.f //2^30
 
 #define EPSILON         0.0001f
@@ -12,7 +12,7 @@
 
 struct s_mympu mympu;
 
-struct s_quat { float w, x, y, z; }; 
+struct s_quat { float w, x, y, z; };
 
 union u_quat {
 	struct s_quat _f;
@@ -21,6 +21,7 @@ union u_quat {
 
 static int ret;
 static short gyro[3];
+static short accel[3];
 static short sensors;
 static unsigned char fifoCount;
 
@@ -32,8 +33,7 @@ int mympu_open(unsigned int rate) {
 #ifdef MPU_DEBUG
 	if (ret) return 10+ret;
 #endif
-	
-	ret = mpu_set_sensors(INV_XYZ_GYRO|INV_XYZ_ACCEL); 
+	ret = mpu_set_sensors(INV_XYZ_GYRO|INV_XYZ_ACCEL);
 #ifdef MPU_DEBUG
 	if (ret) return 20+ret;
 #endif
@@ -52,7 +52,6 @@ int mympu_open(unsigned int rate) {
 #ifdef MPU_DEBUG
 	if (!ret) return 50+ret;
 #endif
-
         ret = mpu_configure_fifo(INV_XYZ_GYRO|INV_XYZ_ACCEL);
 #ifdef MPU_DEBUG
 	if (ret) return 60+ret;
@@ -76,7 +75,7 @@ int mympu_open(unsigned int rate) {
 	if (ret) return 100+ret;
 #endif
 
-	ret = dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT|DMP_FEATURE_SEND_CAL_GYRO|DMP_FEATURE_GYRO_CAL);
+	ret = dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT|DMP_FEATURE_SEND_CAL_GYRO|DMP_FEATURE_GYRO_CAL|DMP_FEATURE_SEND_RAW_ACCEL);
 //	ret = dmp_enable_feature(DMP_FEATURE_SEND_CAL_GYRO|DMP_FEATURE_GYRO_CAL);
 #ifdef MPU_DEBUG
 	if (ret) return 110+ret;
@@ -127,7 +126,7 @@ static inline float wrap_180(float x) {
 int mympu_update() {
 
 	do {
-		ret = dmp_read_fifo(gyro,NULL,q._l,NULL,&sensors,&fifoCount);
+		ret = dmp_read_fifo(gyro,accel,q._l,NULL,&sensors,&fifoCount);
 		/* will return:
 			0 - if ok
 			1 - no packet available
@@ -136,7 +135,7 @@ int mympu_update() {
 		       <0 - if error
 		*/
 
-		if (ret!=0) return ret; 
+		if (ret!=0) return ret;
 	} while (fifoCount>1);
 
 	q._f.w = (float)q._l[0] / (float)QUAT_SENS;
@@ -146,19 +145,22 @@ int mympu_update() {
 
 
 	quaternionToEuler( &q._f, &mympu.ypr[2], &mympu.ypr[1], &mympu.ypr[0] );
-	
-	/* need to adjust signs and do the wraps depending on the MPU mount orientation */ 
+
+	/* need to adjust signs and do the wraps depending on the MPU mount orientation */
 	/* if axis is no centered around 0 but around i.e 90 degree due to mount orientation */
 	/* then do:  mympu.ypr[x] = wrap_180(90.f+rad2deg(mympu.ypr[x])); */
 	mympu.ypr[0] = rad2deg(mympu.ypr[0]);
 	mympu.ypr[1] = rad2deg(mympu.ypr[1]);
 	mympu.ypr[2] = rad2deg(mympu.ypr[2]);
 
-	/* need to adjust signs depending on the MPU mount orientation */ 
+	/* need to adjust signs depending on the MPU mount orientation */
 	mympu.gyro[0] = -(float)gyro[2] / GYRO_SENS;
 	mympu.gyro[1] = (float)gyro[1] / GYRO_SENS;
 	mympu.gyro[2] = (float)gyro[0] / GYRO_SENS;
 
+  mympu.accel[0]=(float)accel[0];
+  mympu.accel[1]=(float)accel[1];
+  mympu.accel[2]=(float)accel[2];
+
 	return 0;
 }
-
